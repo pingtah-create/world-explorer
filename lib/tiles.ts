@@ -23,11 +23,12 @@ export function tileKeyToRect(key: string): {
 
 export function tileKeyToHole(key: string): { latitude: number; longitude: number }[] {
   const { minLat, maxLat, minLng, maxLng } = tileKeyToRect(key);
+  // Holes must be clockwise (right-hand rule) per react-native-maps spec
   return [
-    { latitude: minLat, longitude: minLng },
-    { latitude: minLat, longitude: maxLng },
-    { latitude: maxLat, longitude: maxLng },
-    { latitude: maxLat, longitude: minLng },
+    { latitude: minLat, longitude: minLng }, // SW
+    { latitude: maxLat, longitude: minLng }, // NW
+    { latitude: maxLat, longitude: maxLng }, // NE
+    { latitude: minLat, longitude: maxLng }, // SE
   ];
 }
 
