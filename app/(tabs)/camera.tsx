@@ -18,7 +18,11 @@ const CONFIDENCE_LABELS = { high: 'High confidence', medium: 'Medium confidence'
 export default function CameraScreen() {
   const [stage, setStage] = useState<Stage>('idle');
   const [imageUri, setImageUri] = useState<string | null>(null);
-  const [result, setResult] = useState<{ common: string; scientific: string; photo?: string; taxonId?: number; confidence?: string } | null>(null);
+  const [result, setResult] = useState<{
+    common: string; scientific: string; photo?: string;
+    taxonId?: number; confidence?: string;
+    group?: string; fun_fact?: string; conservation_status?: string;
+  } | null>(null);
   const { addSighting } = useAnimalCollection();
   const { coords } = useLocation();
   const router = useRouter();
@@ -50,6 +54,9 @@ export default function CameraScreen() {
         photo: animal.photo_url,
         taxonId: animal.taxon_id,
         confidence: animal.confidence,
+        group: animal.group,
+        fun_fact: animal.fun_fact,
+        conservation_status: animal.conservation_status,
       });
       setStage('result');
     } catch (e: any) {
@@ -105,13 +112,23 @@ export default function CameraScreen() {
         {imageUri && <Image source={{ uri: imageUri }} style={s.previewLarge} />}
 
         <View style={s.resultCard}>
-          <View style={s.confBadge}>
-            <View style={[s.confDot, { backgroundColor: confColor }]} />
-            <Text style={[s.confText, { color: confColor }]}>{confLabel}</Text>
+          <View style={s.resultTopRow}>
+            <View style={s.confBadge}>
+              <View style={[s.confDot, { backgroundColor: confColor }]} />
+              <Text style={[s.confText, { color: confColor }]}>{confLabel}</Text>
+            </View>
+            {result.group ? <View style={s.groupBadge}><Text style={s.groupText}>{result.group}</Text></View> : null}
+            {result.conservation_status ? <View style={s.statusBadge}><Text style={s.statusText}>🛡 {result.conservation_status}</Text></View> : null}
           </View>
           <Text style={s.commonName}>{result.common}</Text>
           <Text style={s.sciName}>{result.scientific}</Text>
           {result.photo ? <Image source={{ uri: result.photo }} style={s.refPhoto} /> : null}
+          {result.fun_fact ? (
+            <View style={s.funFactBox}>
+              <Text style={s.funFactLabel}>💡 Fun Fact</Text>
+              <Text style={s.funFactText}>{result.fun_fact}</Text>
+            </View>
+          ) : null}
         </View>
 
         <TouchableOpacity style={s.btn} onPress={save}>
@@ -206,4 +223,12 @@ const s = StyleSheet.create({
   commonName: { fontSize: 24, fontWeight: '800', color: COLORS.text, letterSpacing: -0.3 },
   sciName: { fontSize: 14, color: COLORS.muted, fontStyle: 'italic' },
   refPhoto: { width: '100%', height: 180, borderRadius: 12, marginTop: 10, backgroundColor: '#1a1a1a' },
+  resultTopRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
+  groupBadge: { backgroundColor: COLORS.surface2, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: COLORS.border },
+  groupText: { color: COLORS.muted, fontSize: 11, fontWeight: '600' },
+  statusBadge: { backgroundColor: COLORS.primaryDim, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: COLORS.primaryGlow },
+  statusText: { color: COLORS.primary, fontSize: 11, fontWeight: '600' },
+  funFactBox: { marginTop: 12, backgroundColor: COLORS.surface2, borderRadius: 10, padding: 12, gap: 6, borderWidth: 1, borderColor: COLORS.border },
+  funFactLabel: { color: COLORS.primary, fontSize: 12, fontWeight: '700' },
+  funFactText: { color: COLORS.text, fontSize: 13, lineHeight: 19, opacity: 0.85 },
 });

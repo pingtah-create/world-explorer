@@ -1,11 +1,21 @@
 const INAT_TOKEN = process.env.EXPO_PUBLIC_INAT_TOKEN ?? '';
 
+const GROUP_LABELS: Record<string, string> = {
+  Mammalia: 'Mammal', Aves: 'Bird', Reptilia: 'Reptile',
+  Amphibia: 'Amphibian', Actinopterygii: 'Fish', Insecta: 'Insect',
+  Arachnida: 'Arachnid', Mollusca: 'Mollusk', Plantae: 'Plant',
+  Fungi: 'Fungus', Animalia: 'Animal',
+};
+
 export type AnimalIDResult = {
   common_name: string;
   scientific_name: string;
   confidence: 'high' | 'medium' | 'low';
   taxon_id: number;
   photo_url: string;
+  group: string;
+  fun_fact: string;
+  conservation_status: string;
 } | null;
 
 export async function identifyAnimal(imageUri: string): Promise<AnimalIDResult> {
@@ -33,11 +43,33 @@ export async function identifyAnimal(imageUri: string): Promise<AnimalIDResult> 
   const taxon = top.taxon;
   const score: number = top.combined_score;
 
+  // Fetch full taxon for wikipedia summary + conservation status
+  let fun_fact = '';
+  let conservation_status = '';
+  try {
+    const detailRes = await fetch(`https://api.inaturalist.org/v1/taxa/${taxon.id}`);
+    if (detailRes.ok) {
+      const detail = await detailRes.json();
+      const full = detail.results?.[0];
+      if (full?.wikipedia_summary) {
+        // Take first 2 sentences as a fun fact
+        const sentences = full.wikipedia_summary.replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/);
+        fun_fact = sentences.slice(0, 2).join(' ');
+      }
+      if (full?.conservation_status?.status_name) {
+        conservation_status = full.conservation_status.status_name;
+      }
+    }
+  } catch {}
+
   return {
     common_name: taxon.preferred_common_name ?? taxon.name,
     scientific_name: taxon.name,
     confidence: score >= 0.7 ? 'high' : score >= 0.4 ? 'medium' : 'low',
     taxon_id: taxon.id,
     photo_url: taxon.default_photo?.medium_url ?? '',
+    group: GROUP_LABELS[taxon.iconic_taxon_name ?? ''] ?? taxon.iconic_taxon_name ?? 'Organism',
+    fun_fact,
+    conservation_status,
   };
 }
