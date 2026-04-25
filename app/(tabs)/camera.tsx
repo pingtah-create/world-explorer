@@ -52,8 +52,8 @@ export default function CameraScreen() {
         confidence: animal.confidence,
       });
       setStage('result');
-    } catch {
-      Alert.alert('Error', 'Something went wrong. Check your iNaturalist token and try again.');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Something went wrong.');
       setStage('idle');
     }
   }

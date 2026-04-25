@@ -12,13 +12,19 @@ export async function identifyAnimal(imageUri: string): Promise<AnimalIDResult> 
   const formData = new FormData();
   formData.append('image', { uri: imageUri, name: 'photo.jpg', type: 'image/jpeg' } as any);
 
+  const headers: Record<string, string> = {};
+  if (INAT_TOKEN) headers['Authorization'] = `Bearer ${INAT_TOKEN}`;
+
   const res = await fetch('https://api.inaturalist.org/v1/computervision/score_image', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${INAT_TOKEN}` },
+    headers,
     body: formData,
   });
 
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`iNaturalist API ${res.status}: ${body.slice(0, 120)}`);
+  }
 
   const json = await res.json();
   const top = json.results?.[0];
