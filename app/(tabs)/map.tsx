@@ -69,6 +69,8 @@ export default function MapScreen() {
     );
   }
 
+  const zoomedOut = region.latitudeDelta > 0.15;
+
   return (
     <View style={s.root}>
       <MapView
@@ -79,7 +81,7 @@ export default function MapScreen() {
         initialRegion={initialRegion}
         onRegionChangeComplete={setRegion}
       >
-        {fogTiles.map(key => (
+        {!zoomedOut && fogTiles.map(key => (
           <Polygon
             key={key}
             coordinates={tilePolygon(key)}
@@ -90,6 +92,11 @@ export default function MapScreen() {
           />
         ))}
       </MapView>
+
+      {/* Full-screen fog when zoomed out too far for individual tiles */}
+      {zoomedOut && (
+        <View style={s.fogOverlay} pointerEvents="none" />
+      )}
 
       <View style={[s.topBadge, { top: insets.top + 12 }]}>
         <Text style={s.appName}>🌍 World Explorer</Text>
@@ -134,4 +141,5 @@ const s = StyleSheet.create({
   statValue: { color: COLORS.primary, fontSize: 18, fontWeight: '800' },
   statLabel: { color: COLORS.muted, fontSize: 10, fontWeight: '600', marginTop: 1 },
   divider: { width: 1, height: 28, backgroundColor: COLORS.border },
+  fogOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: FOG_COLOR },
 });
