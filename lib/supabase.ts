@@ -26,6 +26,7 @@ export type AnimalSighting = {
   taxon_id: number;
   common_name: string;
   scientific_name: string;
+  group?: string;
   photo_url: string;
   inaturalist_photo: string;
   spotted_at: string;

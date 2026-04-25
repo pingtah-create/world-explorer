@@ -27,12 +27,16 @@ create table if not exists animal_sightings (
   taxon_id           int default 0,
   common_name        text not null,
   scientific_name    text not null,
+  "group"            text default '',
   photo_url          text default '',
   inaturalist_photo  text default '',
   spotted_at         timestamptz default now(),
   lat                float default 0,
   lng                float default 0
 );
+
+-- Migration: add group column if table already exists
+alter table animal_sightings add column if not exists "group" text default '';
 
 alter table animal_sightings enable row level security;
 

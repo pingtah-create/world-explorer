@@ -79,6 +79,7 @@ export default function CameraScreen() {
         taxon_id: result.taxonId ?? 0,
         common_name: result.common,
         scientific_name: result.scientific,
+        group: result.group ?? '',
         photo_url: result.photo ?? '',
         inaturalist_photo: result.photo ?? '',
         spotted_at: new Date().toISOString(),
