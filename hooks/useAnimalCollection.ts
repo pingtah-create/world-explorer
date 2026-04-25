@@ -23,7 +23,7 @@ export function useAnimalCollection() {
 
   const addSighting = useCallback(async (sighting: Omit<AnimalSighting, 'id' | 'user_id'>) => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) throw new Error('Not logged in');
 
     const { data, error } = await supabase
       .from('animal_sightings')
@@ -31,7 +31,8 @@ export function useAnimalCollection() {
       .select()
       .single();
 
-    if (!error && data) setSightings(prev => [data as AnimalSighting, ...prev]);
+    if (error) throw new Error(error.message);
+    if (data) setSightings(prev => [data as AnimalSighting, ...prev]);
   }, []);
 
   return { sightings, loading, addSighting, refresh: fetchAll };

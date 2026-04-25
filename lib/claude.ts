@@ -14,8 +14,10 @@ export type AnimalIDResult = {
   taxon_id: number;
   photo_url: string;
   group: string;
+  description: string;
   fun_fact: string;
   conservation_status: string;
+  observations_count: number;
 } | null;
 
 export async function identifyAnimal(imageUri: string): Promise<AnimalIDResult> {
@@ -43,22 +45,30 @@ export async function identifyAnimal(imageUri: string): Promise<AnimalIDResult> 
   const taxon = top.taxon;
   const score: number = top.combined_score;
 
-  // Fetch full taxon for wikipedia summary + conservation status
+  // Fetch full taxon details
+  let description = '';
   let fun_fact = '';
   let conservation_status = '';
+  let observations_count = 0;
   try {
     const detailRes = await fetch(`https://api.inaturalist.org/v1/taxa/${taxon.id}`);
     if (detailRes.ok) {
       const detail = await detailRes.json();
       const full = detail.results?.[0];
+      observations_count = full?.observations_count ?? 0;
       if (full?.wikipedia_summary) {
-        // Take first 2 sentences as a fun fact
-        const sentences = full.wikipedia_summary.replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/);
-        fun_fact = sentences.slice(0, 2).join(' ');
+        // Clean HTML entities and split sentences without lookbehind
+        const clean = full.wikipedia_summary
+          .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+          .replace(/\s+/g, ' ').trim();
+        // Split on ". " or "! " or "? " followed by capital letter
+        const parts = clean.split(/[.!?]\s+/);
+        description = parts.slice(0, 4).join('. ').trim();
+        if (description && !description.match(/[.!?]$/)) description += '.';
+        fun_fact = parts.slice(0, 2).join('. ').trim();
+        if (fun_fact && !fun_fact.match(/[.!?]$/)) fun_fact += '.';
       }
-      if (full?.conservation_status?.status_name) {
-        conservation_status = full.conservation_status.status_name;
-      }
+      conservation_status = full?.conservation_status?.status_name ?? '';
     }
   } catch {}
 
@@ -69,7 +79,9 @@ export async function identifyAnimal(imageUri: string): Promise<AnimalIDResult> 
     taxon_id: taxon.id,
     photo_url: taxon.default_photo?.medium_url ?? '',
     group: GROUP_LABELS[taxon.iconic_taxon_name ?? ''] ?? taxon.iconic_taxon_name ?? 'Organism',
+    description,
     fun_fact,
     conservation_status,
+    observations_count,
   };
 }
