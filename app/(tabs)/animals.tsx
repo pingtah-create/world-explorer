@@ -1,5 +1,6 @@
+import { useCallback } from 'react';
 import { SectionList, Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAnimalCollection } from '../../hooks/useAnimalCollection';
 import { COLORS } from '../../constants';
@@ -48,8 +49,10 @@ function AnimalRow({ row }: { row: Row }) {
 }
 
 export default function AnimalsScreen() {
-  const { sightings, loading } = useAnimalCollection();
+  const { sightings, loading, refresh } = useAnimalCollection();
   const insets = useSafeAreaInsets();
+
+  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 
   if (loading) {
     return <View style={s.center}><ActivityIndicator color={COLORS.primary} size="large" /></View>;
