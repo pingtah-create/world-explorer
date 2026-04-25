@@ -1,26 +1,64 @@
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import MapView, { Polygon } from 'react-native-maps';
+import MapView, { Polygon, Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocation } from '../../hooks/useLocation';
 import { useVisitedTiles } from '../../hooks/useVisitedTiles';
-import { tileKeyToHole } from '../../lib/tiles';
-import { COLORS } from '../../constants';
+import { tileKeyToRect } from '../../lib/tiles';
+import { COLORS, TILE_SIZE } from '../../constants';
 
-// CCW winding (left-hand rule) fills the interior — holes punch through with CW winding
-const WORLD_COORDS = [
-  { latitude: -85, longitude: -180 },
-  { latitude: -85, longitude: 180 },
-  { latitude: 85, longitude: 180 },
-  { latitude: 85, longitude: -180 },
-];
+const FOG_COLOR = 'rgba(20,20,30,0.82)';
+const MAX_FOG_TILES = 300;
+
+function tilePolygon(key: string) {
+  const { minLat, maxLat, minLng, maxLng } = tileKeyToRect(key);
+  return [
+    { latitude: minLat, longitude: minLng },
+    { latitude: minLat, longitude: maxLng },
+    { latitude: maxLat, longitude: maxLng },
+    { latitude: maxLat, longitude: minLng },
+  ];
+}
 
 export default function MapScreen() {
   const { coords, error } = useLocation();
   const { tiles } = useVisitedTiles(coords);
   const insets = useSafeAreaInsets();
 
-  const holes = Array.from(tiles).map(tileKeyToHole);
+  const initialRegion = {
+    latitude: coords?.latitude ?? 20,
+    longitude: coords?.longitude ?? 0,
+    latitudeDelta: coords ? 0.05 : 60,
+    longitudeDelta: coords ? 0.05 : 60,
+  };
+
+  const [region, setRegion] = useState<Region>(initialRegion);
   const kmSquared = (tiles.size * 1.1).toFixed(0);
+
+  const fogTiles = useMemo(() => {
+    if (region.latitudeDelta > 0.15) return [];
+
+    const buf = TILE_SIZE * 2;
+    const minLat = region.latitude - region.latitudeDelta - buf;
+    const maxLat = region.latitude + region.latitudeDelta + buf;
+    const minLng = region.longitude - region.longitudeDelta - buf;
+    const maxLng = region.longitude + region.longitudeDelta + buf;
+
+    const startX = Math.floor(minLng / TILE_SIZE);
+    const endX = Math.ceil(maxLng / TILE_SIZE);
+    const startY = Math.floor(minLat / TILE_SIZE);
+    const endY = Math.ceil(maxLat / TILE_SIZE);
+
+    const result: string[] = [];
+    for (let x = startX; x <= endX; x++) {
+      for (let y = startY; y <= endY; y++) {
+        const key = `${x}_${y}`;
+        if (!tiles.has(key)) result.push(key);
+        if (result.length >= MAX_FOG_TILES) return result;
+      }
+    }
+    return result;
+  }, [region, tiles]);
 
   if (error) {
     return (
@@ -38,20 +76,19 @@ export default function MapScreen() {
         mapType="standard"
         showsUserLocation
         followsUserLocation={!!coords}
-        initialRegion={
-          coords
-            ? { latitude: coords.latitude, longitude: coords.longitude, latitudeDelta: 0.05, longitudeDelta: 0.05 }
-            : { latitude: 20, longitude: 0, latitudeDelta: 100, longitudeDelta: 100 }
-        }
+        initialRegion={initialRegion}
+        onRegionChangeComplete={setRegion}
       >
-        <Polygon
-          coordinates={WORLD_COORDS}
-          holes={holes}
-          fillColor={COLORS.fogColor}
-          strokeColor="rgba(0,0,0,0)"
-          strokeWidth={1}
-          geodesic={false}
-        />
+        {fogTiles.map(key => (
+          <Polygon
+            key={key}
+            coordinates={tilePolygon(key)}
+            fillColor={FOG_COLOR}
+            strokeColor="rgba(0,0,0,0)"
+            strokeWidth={0}
+            tappable={false}
+          />
+        ))}
       </MapView>
 
       <View style={[s.topBadge, { top: insets.top + 12 }]}>
@@ -88,7 +125,7 @@ const s = StyleSheet.create({
   appName: { color: COLORS.text, fontSize: 15, fontWeight: '700', letterSpacing: 0.2 },
   bottomBadge: {
     position: 'absolute', bottom: 32, alignSelf: 'center',
-    flexDirection: 'row', alignItems: 'center', gap: 0,
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(10,10,10,0.82)',
     borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10,
     borderWidth: 1, borderColor: COLORS.primaryGlow,
