@@ -12,5 +12,5 @@ export const COLORS = {
   primaryGlow: 'rgba(74,222,128,0.25)',
   danger: '#f87171',
   warn: '#fbbf24',
-  fogColor: 'rgba(60,60,70,0.82)',
+  fogColor: 'rgba(30,30,40,0.88)',
 };

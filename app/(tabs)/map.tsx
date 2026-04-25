@@ -48,7 +48,9 @@ export default function MapScreen() {
           coordinates={WORLD_COORDS}
           holes={holes}
           fillColor={COLORS.fogColor}
-          strokeWidth={0}
+          strokeColor="rgba(0,0,0,0)"
+          strokeWidth={1}
+          geodesic={false}
         />
       </MapView>
 
