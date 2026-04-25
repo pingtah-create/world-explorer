@@ -38,7 +38,14 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.worldexplorer.app"
+      "bundleIdentifier": "com.worldexplorer.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "World Explorer needs your location to reveal the map as you explore.",
+        "NSLocationAlwaysUsageDescription": "World Explorer needs your location to reveal the map as you explore.",
+        "NSCameraUsageDescription": "World Explorer needs camera access to identify animals.",
+        "NSPhotoLibraryUsageDescription": "World Explorer needs photo library access to identify animals from existing photos.",
+        "NSPhotoLibraryAddUsageDescription": "World Explorer saves identified animal photos to your library."
+      }
     },
     "android": {
       "adaptiveIcon": {
