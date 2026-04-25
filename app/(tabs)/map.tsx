@@ -63,8 +63,10 @@ export default function MapScreen() {
   if (error) {
     return (
       <View style={s.center}>
-        <Text style={s.errorIcon}>📍</Text>
-        <Text style={s.errorText}>{error}</Text>
+        <View style={s.errorCard}>
+          <Text style={s.errorIcon}>📍</Text>
+          <Text style={s.errorText}>{error}</Text>
+        </View>
       </View>
     );
   }
@@ -93,25 +95,33 @@ export default function MapScreen() {
         ))}
       </MapView>
 
-      {/* Full-screen fog when zoomed out too far for individual tiles */}
-      {zoomedOut && (
-        <View style={s.fogOverlay} pointerEvents="none" />
-      )}
+      {zoomedOut && <View style={s.fogOverlay} pointerEvents="none" />}
 
+      {/* Top badge */}
       <View style={[s.topBadge, { top: insets.top + 12 }]}>
-        <Text style={s.appName}>🌍 World Explorer</Text>
+        <Text style={s.appName}>🌍  World Explorer</Text>
       </View>
 
-      <View style={s.bottomBadge}>
-        <View style={s.stat}>
+      {/* Bottom stats */}
+      <View style={[s.bottomCard, { bottom: 24 }]}>
+        <View style={s.statCol}>
           <Text style={s.statValue}>{tiles.size}</Text>
           <Text style={s.statLabel}>tiles</Text>
         </View>
-        <View style={s.divider} />
-        <View style={s.stat}>
+        <View style={s.statDivider} />
+        <View style={s.statCol}>
           <Text style={s.statValue}>~{kmSquared}</Text>
           <Text style={s.statLabel}>km²</Text>
         </View>
+        {coords && (
+          <>
+            <View style={s.statDivider} />
+            <View style={s.statCol}>
+              <Text style={s.statValue}>📍</Text>
+              <Text style={s.statLabel}>tracking</Text>
+            </View>
+          </>
+        )}
       </View>
     </View>
   );
@@ -119,27 +129,32 @@ export default function MapScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bg },
-  center: { flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  center: { flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  errorCard: {
+    backgroundColor: COLORS.surface, borderRadius: 16, padding: 24,
+    alignItems: 'center', gap: 10, borderWidth: 1, borderColor: COLORS.border,
+  },
   errorIcon: { fontSize: 36 },
-  errorText: { color: COLORS.danger, fontSize: 14 },
+  errorText: { color: COLORS.danger, fontSize: 14, textAlign: 'center' },
   topBadge: {
     position: 'absolute', left: 16, right: 16,
-    backgroundColor: 'rgba(10,10,10,0.75)',
-    borderRadius: 14, paddingHorizontal: 16, paddingVertical: 10,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(8,8,8,0.82)',
+    borderRadius: 16, paddingHorizontal: 18, paddingVertical: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
     alignItems: 'center',
   },
   appName: { color: COLORS.text, fontSize: 15, fontWeight: '700', letterSpacing: 0.2 },
-  bottomBadge: {
-    position: 'absolute', bottom: 32, alignSelf: 'center',
+  bottomCard: {
+    position: 'absolute', alignSelf: 'center',
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(10,10,10,0.82)',
-    borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10,
+    backgroundColor: 'rgba(8,8,8,0.88)',
+    borderRadius: 24, paddingHorizontal: 24, paddingVertical: 12,
     borderWidth: 1, borderColor: COLORS.primaryGlow,
+    gap: 0,
   },
-  stat: { alignItems: 'center', paddingHorizontal: 12 },
-  statValue: { color: COLORS.primary, fontSize: 18, fontWeight: '800' },
-  statLabel: { color: COLORS.muted, fontSize: 10, fontWeight: '600', marginTop: 1 },
-  divider: { width: 1, height: 28, backgroundColor: COLORS.border },
+  statCol: { alignItems: 'center', paddingHorizontal: 16, gap: 2 },
+  statValue: { color: COLORS.primary, fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  statLabel: { color: COLORS.muted, fontSize: 10, fontWeight: '600' },
+  statDivider: { width: 1, height: 30, backgroundColor: COLORS.border },
   fogOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: FOG_COLOR },
 });

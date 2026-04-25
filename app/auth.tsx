@@ -9,6 +9,7 @@ export default function AuthScreen() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   async function submit() {
     setError(null);
@@ -22,82 +23,132 @@ export default function AuthScreen() {
 
   return (
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={s.card} keyboardShouldPersistTaps="handled">
-        <View style={s.logoWrap}>
-          <Text style={s.logoEmoji}>🌍</Text>
-        </View>
+      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-        <Text style={s.title}>World Explorer</Text>
-        <Text style={s.subtitle}>Reveal the map. Catch every animal.</Text>
-
-        <View style={s.form}>
-          <TextInput
-            style={s.input}
-            placeholder="Email"
-            placeholderTextColor={COLORS.muted}
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-          <TextInput
-            style={s.input}
-            placeholder="Password"
-            placeholderTextColor={COLORS.muted}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          {error && (
-            <View style={s.errorWrap}>
-              <Text style={s.error}>{error}</Text>
+        {/* Hero */}
+        <View style={s.hero}>
+          <View style={s.logoOuter}>
+            <View style={s.logoInner}>
+              <Text style={s.logoEmoji}>🌍</Text>
             </View>
-          )}
-
-          <TouchableOpacity style={s.btn} onPress={submit} disabled={loading}>
-            {loading
-              ? <ActivityIndicator color="#000" />
-              : <Text style={s.btnText}>{mode === 'signin' ? 'Sign In' : 'Create Account'}</Text>}
-          </TouchableOpacity>
+          </View>
+          <Text style={s.appName}>World Explorer</Text>
+          <Text style={s.tagline}>Reveal the map. Catch every animal.</Text>
         </View>
 
-        <TouchableOpacity onPress={() => { setMode(m => m === 'signin' ? 'signup' : 'signin'); setError(null); }}>
-          <Text style={s.toggle}>
-            {mode === 'signin' ? "Don't have an account?  Sign up" : 'Already have an account?  Sign in'}
+        {/* Card */}
+        <View style={s.card}>
+          <Text style={s.cardTitle}>{mode === 'signin' ? 'Welcome back' : 'Get started'}</Text>
+
+          <View style={s.form}>
+            <View style={[s.inputWrap, focusedField === 'email' && s.inputWrapFocused]}>
+              <Text style={s.inputIcon}>✉️</Text>
+              <TextInput
+                style={s.input}
+                placeholder="Email address"
+                placeholderTextColor={COLORS.muted}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                onFocus={() => setFocusedField('email')}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
+            <View style={[s.inputWrap, focusedField === 'password' && s.inputWrapFocused]}>
+              <Text style={s.inputIcon}>🔒</Text>
+              <TextInput
+                style={s.input}
+                placeholder="Password"
+                placeholderTextColor={COLORS.muted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                onFocus={() => setFocusedField('password')}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
+
+            {error ? (
+              <View style={s.errorWrap}>
+                <Text style={s.errorIcon}>⚠️</Text>
+                <Text style={s.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            <TouchableOpacity style={[s.btn, loading && s.btnDisabled]} onPress={submit} disabled={loading} activeOpacity={0.8}>
+              {loading
+                ? <ActivityIndicator color="#000" />
+                : <Text style={s.btnText}>{mode === 'signin' ? 'Sign In' : 'Create Account'}</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <TouchableOpacity style={s.toggleBtn} onPress={() => { setMode(m => m === 'signin' ? 'signup' : 'signin'); setError(null); }} activeOpacity={0.7}>
+          <Text style={s.toggleText}>
+            {mode === 'signin' ? "New here? " : 'Have an account? '}
+            <Text style={s.toggleLink}>{mode === 'signin' ? 'Create account' : 'Sign in'}</Text>
           </Text>
         </TouchableOpacity>
+
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', padding: 28 },
-  card: { gap: 14, paddingVertical: 16 },
-  logoWrap: {
-    width: 88, height: 88, borderRadius: 44,
+  root: { flex: 1, backgroundColor: COLORS.bg },
+  scroll: { flexGrow: 1, justifyContent: 'center', padding: 24, gap: 20 },
+
+  hero: { alignItems: 'center', gap: 10, paddingVertical: 16 },
+  logoOuter: {
+    width: 100, height: 100, borderRadius: 50,
     backgroundColor: COLORS.primaryDim,
-    borderWidth: 1.5, borderColor: COLORS.primaryGlow,
+    borderWidth: 1, borderColor: COLORS.primaryGlow,
     alignItems: 'center', justifyContent: 'center',
-    alignSelf: 'center', marginBottom: 8,
   },
-  logoEmoji: { fontSize: 44 },
-  title: { fontSize: 30, fontWeight: '800', color: COLORS.text, textAlign: 'center', letterSpacing: -0.5 },
-  subtitle: { fontSize: 14, color: COLORS.muted, textAlign: 'center', marginBottom: 8 },
-  form: { gap: 10 },
-  input: {
+  logoInner: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: 'rgba(74,222,128,0.07)',
+    borderWidth: 1, borderColor: COLORS.primaryStrong,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  logoEmoji: { fontSize: 42 },
+  appName: { fontSize: 32, fontWeight: '800', color: COLORS.text, letterSpacing: -0.8, marginTop: 4 },
+  tagline: { fontSize: 14, color: COLORS.muted, letterSpacing: 0.2 },
+
+  card: {
     backgroundColor: COLORS.surface,
+    borderRadius: 24, padding: 24,
     borderWidth: 1, borderColor: COLORS.border,
-    borderRadius: 12, padding: 15,
-    color: COLORS.text, fontSize: 15,
+    gap: 18,
   },
+  cardTitle: { fontSize: 20, fontWeight: '700', color: COLORS.text, letterSpacing: -0.3 },
+
+  form: { gap: 12 },
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: COLORS.surface2,
+    borderWidth: 1, borderColor: COLORS.border,
+    borderRadius: 14, paddingHorizontal: 14, gap: 10,
+  },
+  inputWrapFocused: { borderColor: COLORS.primary },
+  inputIcon: { fontSize: 16 },
+  input: { flex: 1, color: COLORS.text, fontSize: 15, paddingVertical: 15 },
+
   errorWrap: {
-    backgroundColor: 'rgba(248,113,113,0.1)',
-    borderRadius: 8, padding: 10, borderWidth: 1, borderColor: 'rgba(248,113,113,0.3)',
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: COLORS.dangerDim,
+    borderRadius: 10, padding: 12, borderWidth: 1, borderColor: COLORS.dangerBorder,
   },
-  error: { color: COLORS.danger, fontSize: 13 },
-  btn: { backgroundColor: COLORS.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 4 },
-  btnText: { color: '#000', fontWeight: '800', fontSize: 16 },
-  toggle: { color: COLORS.muted, textAlign: 'center', fontSize: 13, marginTop: 4 },
+  errorIcon: { fontSize: 14 },
+  errorText: { color: COLORS.danger, fontSize: 13, flex: 1 },
+
+  btn: { backgroundColor: COLORS.primary, borderRadius: 14, padding: 17, alignItems: 'center', marginTop: 4 },
+  btnDisabled: { opacity: 0.6 },
+  btnText: { color: '#000', fontWeight: '800', fontSize: 16, letterSpacing: 0.2 },
+
+  toggleBtn: { alignItems: 'center', paddingVertical: 8 },
+  toggleText: { color: COLORS.muted, fontSize: 14 },
+  toggleLink: { color: COLORS.primary, fontWeight: '700' },
 });

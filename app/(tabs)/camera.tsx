@@ -10,10 +10,11 @@ import { COLORS } from '../../constants';
 
 type Stage = 'idle' | 'identifying' | 'result' | 'saving';
 
-const CONFIDENCE_COLORS = { high: COLORS.primary, medium: COLORS.warn, low: COLORS.danger };
-const CONFIDENCE_LABELS = { high: 'High confidence', medium: 'Medium confidence', low: 'Low confidence' };
+const CONF_COLOR = { high: COLORS.primary, medium: COLORS.warn, low: COLORS.danger };
+const CONF_LABEL = { high: 'High confidence', medium: 'Medium confidence', low: 'Low confidence' };
+const CONF_DOT = { high: '🟢', medium: '🟡', low: '🔴' };
 
-function formatObservations(n: number): string {
+function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
   return String(n);
@@ -37,7 +38,6 @@ export default function CameraScreen() {
     const res = fromCamera
       ? await ImagePicker.launchCameraAsync({ mediaTypes: 'images', quality: 0.7 })
       : await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.7 });
-
     if (res.canceled || !res.assets[0]) return;
     setImageUri(res.assets[0].uri);
     await runIdentification(res.assets[0].uri);
@@ -53,14 +53,10 @@ export default function CameraScreen() {
         return;
       }
       setResult({
-        common: animal.common_name,
-        scientific: animal.scientific_name,
-        photo: animal.photo_url,
-        taxonId: animal.taxon_id,
-        confidence: animal.confidence,
-        group: animal.group,
-        description: animal.description,
-        fun_fact: animal.fun_fact,
+        common: animal.common_name, scientific: animal.scientific_name,
+        photo: animal.photo_url, taxonId: animal.taxon_id,
+        confidence: animal.confidence, group: animal.group,
+        description: animal.description, fun_fact: animal.fun_fact,
         conservation_status: animal.conservation_status,
         observations_count: animal.observations_count,
       });
@@ -86,9 +82,7 @@ export default function CameraScreen() {
         lat: coords?.latitude ?? 0,
         lng: coords?.longitude ?? 0,
       });
-      setStage('idle');
-      setImageUri(null);
-      setResult(null);
+      setStage('idle'); setImageUri(null); setResult(null);
       router.push('/(tabs)/animals');
     } catch (e: any) {
       Alert.alert('Could not save', e?.message ?? 'Try again.');
@@ -98,26 +92,39 @@ export default function CameraScreen() {
 
   function reset() { setStage('idle'); setImageUri(null); setResult(null); }
 
+  // ── Result card ──────────────────────────────────────────────────────────
   if (stage === 'result' && result) {
-    const confColor = CONFIDENCE_COLORS[(result.confidence as keyof typeof CONFIDENCE_COLORS) ?? 'low'];
-    const confLabel = CONFIDENCE_LABELS[(result.confidence as keyof typeof CONFIDENCE_LABELS) ?? 'low'];
+    const conf = (result.confidence as keyof typeof CONF_COLOR) ?? 'low';
+    const confColor = CONF_COLOR[conf];
+    const confLabel = CONF_LABEL[conf];
+    const confDot = CONF_DOT[conf];
 
     return (
-      <ScrollView style={s.root} contentContainerStyle={[s.resultContainer, { paddingTop: insets.top + 16 }]}>
-        {imageUri && <Image source={{ uri: imageUri }} style={s.previewLarge} />}
+      <ScrollView style={s.root} contentContainerStyle={[s.resultScroll, { paddingTop: insets.top + 16 }]} showsVerticalScrollIndicator={false}>
 
-        <View style={s.resultCard}>
-          {/* Badges row */}
+        {/* User photo */}
+        {imageUri && (
+          <View style={s.photoWrap}>
+            <Image source={{ uri: imageUri }} style={s.userPhoto} />
+            <View style={s.photoShade} />
+          </View>
+        )}
+
+        {/* Identity card */}
+        <View style={s.identityCard}>
+          {/* Badges */}
           <View style={s.badgeRow}>
-            <View style={s.confBadge}>
-              <View style={[s.dot, { backgroundColor: confColor }]} />
+            <View style={[s.badge, { borderColor: confColor + '55', backgroundColor: confColor + '15' }]}>
+              <Text style={{ fontSize: 10 }}>{confDot}</Text>
               <Text style={[s.badgeText, { color: confColor }]}>{confLabel}</Text>
             </View>
             {result.group ? (
               <View style={s.badge}><Text style={s.badgeText}>{result.group}</Text></View>
             ) : null}
             {result.conservation_status ? (
-              <View style={[s.badge, s.badgeGreen]}><Text style={[s.badgeText, { color: COLORS.primary }]}>🛡 {result.conservation_status}</Text></View>
+              <View style={[s.badge, s.badgeGreen]}>
+                <Text style={[s.badgeText, { color: COLORS.primary }]}>🛡 {result.conservation_status}</Text>
+              </View>
             ) : null}
           </View>
 
@@ -125,15 +132,18 @@ export default function CameraScreen() {
           <Text style={s.commonName}>{result.common}</Text>
           <Text style={s.sciName}>{result.scientific}</Text>
 
-          {/* Stats row */}
+          {/* Divider */}
+          <View style={s.divider} />
+
+          {/* Stats */}
           {(result.observations_count ?? 0) > 0 && (
             <View style={s.statsRow}>
-              <View style={s.statItem}>
-                <Text style={s.statValue}>{formatObservations(result.observations_count!)}</Text>
-                <Text style={s.statLabel}>iNat observations</Text>
+              <View style={s.statBox}>
+                <Text style={s.statValue}>{formatCount(result.observations_count!)}</Text>
+                <Text style={s.statLabel}>iNat sightings</Text>
               </View>
               {result.group ? (
-                <View style={s.statItem}>
+                <View style={s.statBox}>
                   <Text style={s.statValue}>{result.group}</Text>
                   <Text style={s.statLabel}>Animal type</Text>
                 </View>
@@ -142,113 +152,201 @@ export default function CameraScreen() {
           )}
 
           {/* Reference photo */}
-          {result.photo ? <Image source={{ uri: result.photo }} style={s.refPhoto} /> : null}
+          {result.photo ? (
+            <View style={s.refPhotoWrap}>
+              <Image source={{ uri: result.photo }} style={s.refPhoto} />
+              <View style={s.refPhotoLabel}><Text style={s.refPhotoLabelText}>Reference · iNaturalist</Text></View>
+            </View>
+          ) : null}
 
-          {/* Description */}
+          {/* About */}
           {result.description ? (
             <View style={s.section}>
-              <Text style={s.sectionLabel}>About</Text>
+              <Text style={s.sectionLabel}>ABOUT</Text>
               <Text style={s.sectionText}>{result.description}</Text>
             </View>
           ) : null}
 
           {/* Fun fact */}
           {result.fun_fact ? (
-            <View style={[s.section, s.funFactBox]}>
-              <Text style={s.funFactLabel}>💡 Fun Fact</Text>
+            <View style={s.funFactBox}>
+              <Text style={s.funFactHeader}>💡  Fun Fact</Text>
               <Text style={s.funFactText}>{result.fun_fact}</Text>
             </View>
           ) : null}
         </View>
 
-        <TouchableOpacity style={s.btn} onPress={save}>
-          <Text style={s.btnText}>Add to Pokédex  🐾</Text>
+        {/* Actions */}
+        <TouchableOpacity style={s.primaryBtn} onPress={save} activeOpacity={0.85}>
+          <Text style={s.primaryBtnText}>Add to Pokédex  🐾</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.btnSecondary} onPress={reset}>
-          <Text style={s.btnSecondaryText}>Discard</Text>
+        <TouchableOpacity style={s.ghostBtn} onPress={reset} activeOpacity={0.7}>
+          <Text style={s.ghostBtnText}>Discard</Text>
         </TouchableOpacity>
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     );
   }
 
-  return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
-      {stage === 'identifying' || stage === 'saving' ? (
-        <View style={s.center}>
-          <View style={s.spinnerWrap}>
+  // ── Loading ──────────────────────────────────────────────────────────────
+  if (stage === 'identifying' || stage === 'saving') {
+    return (
+      <View style={[s.root, s.center]}>
+        <View style={s.spinnerRing}>
+          <View style={s.spinnerInner}>
             <ActivityIndicator size="large" color={COLORS.primary} />
           </View>
-          <Text style={s.loadingTitle}>{stage === 'saving' ? 'Saving…' : 'Identifying…'}</Text>
-          <Text style={s.loadingSubtitle}>{stage === 'saving' ? 'Adding to your Pokédex' : 'Asking iNaturalist…'}</Text>
         </View>
-      ) : (
-        <View style={s.center}>
-          <View style={s.viewfinder}>
-            <View style={[s.corner, s.cornerTL]} />
-            <View style={[s.corner, s.cornerTR]} />
-            <View style={[s.corner, s.cornerBL]} />
-            <View style={[s.corner, s.cornerBR]} />
-            <Text style={s.cameraIcon}>📷</Text>
+        <Text style={s.loadingTitle}>{stage === 'saving' ? 'Saving…' : 'Identifying…'}</Text>
+        <Text style={s.loadingSubtitle}>
+          {stage === 'saving' ? 'Adding to your Pokédex' : 'Asking iNaturalist AI…'}
+        </Text>
+      </View>
+    );
+  }
+
+  // ── Idle scanner ─────────────────────────────────────────────────────────
+  return (
+    <View style={[s.root, s.center, { paddingTop: insets.top }]}>
+      {/* Viewfinder */}
+      <View style={s.viewfinderContainer}>
+        <View style={s.viewfinder}>
+          <View style={[s.corner, s.cornerTL]} />
+          <View style={[s.corner, s.cornerTR]} />
+          <View style={[s.corner, s.cornerBL]} />
+          <View style={[s.corner, s.cornerBR]} />
+          <View style={s.vfCenter}>
+            <Text style={s.vfIcon}>📷</Text>
           </View>
-          <Text style={s.scanTitle}>Identify an Animal</Text>
-          <Text style={s.scanSub}>Point your camera at any animal and let{'\n'}iNaturalist identify it for you</Text>
-          <View style={s.btnGroup}>
-            <TouchableOpacity style={s.btn} onPress={() => pickImage(true)}>
-              <Text style={s.btnText}>Take Photo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.btnSecondary} onPress={() => pickImage(false)}>
-              <Text style={s.btnSecondaryText}>Choose from Library</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Scan line decoration */}
+          <View style={s.scanLine} />
         </View>
-      )}
+        <View style={s.vfDotRow}>
+          {[...Array(3)].map((_, i) => <View key={i} style={s.vfDot} />)}
+        </View>
+      </View>
+
+      <Text style={s.scanTitle}>Identify an Animal</Text>
+      <Text style={s.scanSub}>Point your camera at any animal{'\n'}and let AI identify it instantly</Text>
+
+      <View style={s.btnGroup}>
+        <TouchableOpacity style={s.primaryBtn} onPress={() => pickImage(true)} activeOpacity={0.85}>
+          <Text style={s.primaryBtnText}>📷  Take Photo</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.ghostBtn} onPress={() => pickImage(false)} activeOpacity={0.7}>
+          <Text style={s.ghostBtnText}>Choose from Library</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
-const CORNER = 20;
+const CORNER_SIZE = 22;
 const CORNER_THICK = 3;
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bg },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 20 },
-  viewfinder: { width: 160, height: 160, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  corner: { position: 'absolute', width: CORNER, height: CORNER, borderColor: COLORS.primary },
-  cornerTL: { top: 0, left: 0, borderTopWidth: CORNER_THICK, borderLeftWidth: CORNER_THICK, borderTopLeftRadius: 6 },
-  cornerTR: { top: 0, right: 0, borderTopWidth: CORNER_THICK, borderRightWidth: CORNER_THICK, borderTopRightRadius: 6 },
-  cornerBL: { bottom: 0, left: 0, borderBottomWidth: CORNER_THICK, borderLeftWidth: CORNER_THICK, borderBottomLeftRadius: 6 },
-  cornerBR: { bottom: 0, right: 0, borderBottomWidth: CORNER_THICK, borderRightWidth: CORNER_THICK, borderBottomRightRadius: 6 },
-  cameraIcon: { fontSize: 64 },
-  scanTitle: { fontSize: 22, fontWeight: '700', color: COLORS.text, letterSpacing: -0.3 },
-  scanSub: { fontSize: 14, color: COLORS.muted, textAlign: 'center', lineHeight: 20 },
-  btnGroup: { width: '100%', gap: 10, marginTop: 4 },
-  btn: { backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 15, alignItems: 'center', width: '100%' },
-  btnText: { color: '#000', fontWeight: '800', fontSize: 16 },
-  btnSecondary: { borderRadius: 12, paddingVertical: 15, alignItems: 'center', width: '100%', borderWidth: 1, borderColor: COLORS.border },
-  btnSecondaryText: { color: COLORS.text, fontWeight: '600', fontSize: 16 },
-  spinnerWrap: { width: 80, height: 80, borderRadius: 40, backgroundColor: COLORS.primaryDim, borderWidth: 1, borderColor: COLORS.primaryGlow, alignItems: 'center', justifyContent: 'center' },
-  loadingTitle: { color: COLORS.text, fontSize: 18, fontWeight: '700' },
+  center: { justifyContent: 'center', alignItems: 'center', padding: 28, gap: 18 },
+
+  // Viewfinder
+  viewfinderContainer: { alignItems: 'center', gap: 12 },
+  viewfinder: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  corner: { position: 'absolute', width: CORNER_SIZE, height: CORNER_SIZE, borderColor: COLORS.primary },
+  cornerTL: { top: 0, left: 0, borderTopWidth: CORNER_THICK, borderLeftWidth: CORNER_THICK, borderTopLeftRadius: 8 },
+  cornerTR: { top: 0, right: 0, borderTopWidth: CORNER_THICK, borderRightWidth: CORNER_THICK, borderTopRightRadius: 8 },
+  cornerBL: { bottom: 0, left: 0, borderBottomWidth: CORNER_THICK, borderLeftWidth: CORNER_THICK, borderBottomLeftRadius: 8 },
+  cornerBR: { bottom: 0, right: 0, borderBottomWidth: CORNER_THICK, borderRightWidth: CORNER_THICK, borderBottomRightRadius: 8 },
+  vfCenter: { alignItems: 'center', justifyContent: 'center' },
+  vfIcon: { fontSize: 64 },
+  scanLine: {
+    position: 'absolute', left: 18, right: 18, height: 1,
+    backgroundColor: COLORS.primaryGlow, top: '45%',
+  },
+  vfDotRow: { flexDirection: 'row', gap: 6 },
+  vfDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: COLORS.primaryDim, borderWidth: 1, borderColor: COLORS.primaryGlow },
+
+  scanTitle: { fontSize: 24, fontWeight: '800', color: COLORS.text, letterSpacing: -0.5, textAlign: 'center' },
+  scanSub: { fontSize: 14, color: COLORS.muted, textAlign: 'center', lineHeight: 22 },
+
+  btnGroup: { width: '100%', gap: 10, marginTop: 8 },
+  primaryBtn: {
+    backgroundColor: COLORS.primary, borderRadius: 16,
+    paddingVertical: 16, alignItems: 'center', width: '100%',
+  },
+  primaryBtnText: { color: '#000', fontWeight: '800', fontSize: 16, letterSpacing: 0.2 },
+  ghostBtn: {
+    borderRadius: 16, paddingVertical: 16, alignItems: 'center', width: '100%',
+    borderWidth: 1, borderColor: COLORS.borderBright, backgroundColor: COLORS.surface,
+  },
+  ghostBtnText: { color: COLORS.textDim, fontWeight: '600', fontSize: 15 },
+
+  // Loading
+  spinnerRing: {
+    width: 96, height: 96, borderRadius: 48,
+    backgroundColor: COLORS.primaryDim,
+    borderWidth: 1, borderColor: COLORS.primaryGlow,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  spinnerInner: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1, borderColor: COLORS.primaryStrong,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  loadingTitle: { color: COLORS.text, fontSize: 20, fontWeight: '700', letterSpacing: -0.3 },
   loadingSubtitle: { color: COLORS.muted, fontSize: 13 },
-  resultContainer: { padding: 16, gap: 14, alignItems: 'center', paddingBottom: 48 },
-  previewLarge: { width: '100%', height: 260, borderRadius: 18, backgroundColor: '#1a1a1a' },
-  resultCard: { width: '100%', backgroundColor: COLORS.surface, borderRadius: 18, padding: 18, gap: 10, borderWidth: 1, borderColor: COLORS.border },
+
+  // Result
+  resultScroll: { padding: 16, gap: 12, alignItems: 'center' },
+  photoWrap: { width: '100%', borderRadius: 20, overflow: 'hidden', position: 'relative' },
+  userPhoto: { width: '100%', height: 280, backgroundColor: '#1a1a1a' },
+  photoShade: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, backgroundColor: 'rgba(8,8,8,0.6)' },
+
+  identityCard: {
+    width: '100%', backgroundColor: COLORS.surface,
+    borderRadius: 20, padding: 20, gap: 12,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  confBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.surface2, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: COLORS.border },
-  badge: { backgroundColor: COLORS.surface2, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: COLORS.border },
+  badge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: COLORS.surface2, borderRadius: 8,
+    paddingHorizontal: 9, paddingVertical: 4,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
   badgeGreen: { backgroundColor: COLORS.primaryDim, borderColor: COLORS.primaryGlow },
-  dot: { width: 7, height: 7, borderRadius: 4 },
   badgeText: { fontSize: 11, fontWeight: '600', color: COLORS.muted },
-  commonName: { fontSize: 26, fontWeight: '800', color: COLORS.text, letterSpacing: -0.3 },
-  sciName: { fontSize: 14, color: COLORS.muted, fontStyle: 'italic', marginTop: -4 },
-  statsRow: { flexDirection: 'row', gap: 10, marginTop: 2 },
-  statItem: { flex: 1, backgroundColor: COLORS.surface2, borderRadius: 10, padding: 10, borderWidth: 1, borderColor: COLORS.border, gap: 2 },
-  statValue: { color: COLORS.primary, fontSize: 16, fontWeight: '800' },
+
+  commonName: { fontSize: 28, fontWeight: '800', color: COLORS.text, letterSpacing: -0.5 },
+  sciName: { fontSize: 14, color: COLORS.muted, fontStyle: 'italic', marginTop: -6 },
+
+  divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 2 },
+
+  statsRow: { flexDirection: 'row', gap: 8 },
+  statBox: {
+    flex: 1, backgroundColor: COLORS.surface2, borderRadius: 12,
+    padding: 12, borderWidth: 1, borderColor: COLORS.border, gap: 2,
+  },
+  statValue: { color: COLORS.primary, fontSize: 17, fontWeight: '800' },
   statLabel: { color: COLORS.muted, fontSize: 10, fontWeight: '600' },
-  refPhoto: { width: '100%', height: 180, borderRadius: 12, backgroundColor: '#1a1a1a' },
-  section: { gap: 6, paddingTop: 4 },
-  sectionLabel: { color: COLORS.muted, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
-  sectionText: { color: COLORS.text, fontSize: 13, lineHeight: 20, opacity: 0.85 },
-  funFactBox: { backgroundColor: COLORS.surface2, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: COLORS.border, marginTop: 2 },
-  funFactLabel: { color: COLORS.primary, fontSize: 12, fontWeight: '700' },
-  funFactText: { color: COLORS.text, fontSize: 13, lineHeight: 19, opacity: 0.85 },
+
+  refPhotoWrap: { borderRadius: 14, overflow: 'hidden', position: 'relative' },
+  refPhoto: { width: '100%', height: 200, backgroundColor: '#1a1a1a' },
+  refPhotoLabel: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6,
+  },
+  refPhotoLabelText: { color: COLORS.muted, fontSize: 11, fontWeight: '500' },
+
+  section: { gap: 6 },
+  sectionLabel: { fontSize: 10, fontWeight: '800', color: COLORS.muted, letterSpacing: 1.2 },
+  sectionText: { color: COLORS.textDim, fontSize: 13, lineHeight: 21 },
+
+  funFactBox: {
+    backgroundColor: COLORS.primaryDim, borderRadius: 14,
+    padding: 14, borderWidth: 1, borderColor: COLORS.primaryGlow, gap: 6,
+  },
+  funFactHeader: { color: COLORS.primary, fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  funFactText: { color: COLORS.text, fontSize: 13, lineHeight: 20, opacity: 0.9 },
 });
