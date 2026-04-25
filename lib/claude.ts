@@ -28,7 +28,8 @@ export async function identifyAnimal(imageUri: string): Promise<AnimalIDResult> 
 
   const json = await res.json();
   const top = json.results?.[0];
-  if (!top || top.combined_score < 0.1) return null;
+  console.log('[iNat] top result:', top?.taxon?.name, 'score:', top?.combined_score);
+  if (!top || top.combined_score < 0.01) return null;
 
   const taxon = top.taxon;
   const score: number = top.combined_score;
